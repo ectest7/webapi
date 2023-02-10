@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using WebApi.Data;
 using WebApi.Dtos;
 
@@ -27,14 +28,14 @@ namespace WebApi.Controllers
         [HttpGet]
         public ActionResult<List<CategoriaDto>> GetCategorias()
         {
-            var categorias = _context.Categorias.ToList();
+            var categorias = _context.Categorias.Include(x => x.Productos).ToList();
             return _mapper.Map<List<CategoriaDto>>(categorias);
         }
 
         [HttpGet("{id}", Name = "GetCategoriaById")]
         public ActionResult<CategoriaDto> GetCategoriaById(int id)
         {
-            var categoria = _context.Categorias.FirstOrDefault(x => x.CategoriaId == id);
+            var categoria = _context.Categorias.Include(x => x.Productos).FirstOrDefault(x => x.CategoriaId == id);
             if (categoria is null)
             {
                 return NotFound();
@@ -46,10 +47,24 @@ namespace WebApi.Controllers
         [HttpPost]
         public ActionResult<CategoriaDto> Create(CategoriaCreateDto categoriaCreateDto)
         {
-
-            var categoria = _mapper.Map<Categoria>(categoriaCreateDto);
+            // var categoria = _mapper.Map<Categoria>(categoriaCreateDto);
+            var categoria = new Categoria
+            {
+                Nombre = categoriaCreateDto.Nombre,
+                Productos = new List<Producto>()
+            };
 
             _context.Categorias.Add(categoria);
+
+            foreach (var producto in categoriaCreateDto.Productos)
+            {
+                var productoDB = new Producto
+                {
+                    Nombre = producto.Nombre,
+                    Valor = producto.Valor,
+                };
+                categoria.Productos.Add(productoDB);
+            }
             _context.SaveChanges();
 
             var categoriaDto = _mapper.Map<CategoriaDto>(categoria);
